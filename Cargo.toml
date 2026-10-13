@@ -1,0 +1,8 @@
+[package]
+name = "yubikey-eth"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alloy = "2.5.0"
+ctap-hid-fido2 = "3.6.0"
