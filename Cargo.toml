@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 alloy = "2.5.0"
 ctap-hid-fido2 = "3.6.0"
+sqlx = { version = "0.9.0", features = ["runtime-tokio"] }
+tokio = { version = "1.53.3", features = ["full"] }
