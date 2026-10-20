@@ -6,6 +6,7 @@ use ctap_hid_fido2::{
         AssertionExtension as Gext, CredentialExtension as Mext, GetAssertionArgsBuilder,
         MakeCredentialArgsBuilder, get_info::InfoOption,
     },
+    public_key_credential_user_entity::PublicKeyCredentialUserEntity,
     util, verifier,
 };
 
@@ -24,7 +25,20 @@ fn main() {
         }
     }
 
+    let mut pk_id: Vec<u8> = vec![0u8; 8];
+
+    rand::fill(&mut pk_id);
+
+    println!("{:?}", pk_id);
+
+    let user_metadata = PublicKeyCredentialUserEntity {
+        id: pk_id,
+        name: String::from("Username"),
+        display_name: String::from("Display name"),
+    };
+
     let mut pin = String::new();
+
     if pin_set == false {
         println!("Please set a pin for your device");
         std::io::stdin()
@@ -32,7 +46,9 @@ fn main() {
             .expect("Could not process input");
 
         pin = pin.trim().to_string();
-        device.set_new_pin(&pin);
+        let set_new_pin = device
+            .set_new_pin(&pin)
+            .expect("Could not set pin, please try again");
     } else {
         println!("Enter your pin");
         std::io::stdin()
@@ -42,12 +58,18 @@ fn main() {
         pin = pin.trim().to_string();
     }
 
+    let rp_ids = device.credential_management_enumerate_rps(Some(&pin));
+    if let Ok(rps) = rp_ids {
+        println!("{:?}", rps);
+    }
+
     let challenge = verifier::create_challenge();
     let ext = Mext::HmacSecret(Some(true));
 
     let make_credential_args = MakeCredentialArgsBuilder::new(constants::RPID, &challenge)
         .pin(&pin)
         .resident_key()
+        .user_entity(&user_metadata)
         .extensions(&[ext])
         .build();
 
@@ -102,10 +124,9 @@ fn main() {
         .iter()
         .find(|it| matches!(it, Gext::HmacSecret2(_)));
 
-    if let Some(Gext::HmacSecret2(hmac_secret)) = find {
-        let (res1, res2) = hmac_secret.as_ref().unwrap();
-        println!("--- HMAC Secret 1 = {}", util::to_hex_str(res1));
-        println!("--- HMAC Secret 2 = {}", util::to_hex_str(res2));
+    if let Some(Gext::HmacSecret(hmac_secret)) = find {
+        let res = hmac_secret.as_ref().unwrap();
+        println!("--- HMAC Secret = {}", util::to_hex_str(res));
     } else {
         println!("--- HMAC Secret 2 Not Found");
     }
